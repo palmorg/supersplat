@@ -1,10 +1,13 @@
 import { BooleanInput, ColorPicker, Container, Label, SelectInput, SliderInput } from '@playcanvas/pcui';
 import { Color } from 'playcanvas';
 
+import { SectionState } from '../cross-section';
 import { Events } from '../events';
 import { ShortcutManager } from '../shortcut-manager';
 import { i18n } from './localization';
 import { Tooltips } from './tooltips';
+
+type Axis = 'x' | 'y' | 'z';
 
 class ViewPanel extends Container {
     constructor(events: Events, tooltips: Tooltips, args = {}) {
@@ -373,6 +376,46 @@ class ViewPanel extends Container {
         showCameraPosesRow.append(showCameraPosesLabel);
         showCameraPosesRow.append(showCameraPosesToggle);
 
+        // cross section
+
+        const sectionEnableRow = new Container({
+            class: 'view-panel-row'
+        });
+
+        const sectionEnableLabel = new Label({
+            class: 'view-panel-row-label'
+        });
+        i18n.bindText(sectionEnableLabel, 'panel.view-options.cross-section');
+
+        const sectionEnableToggle = new BooleanInput({
+            type: 'toggle',
+            class: 'view-panel-row-toggle',
+            value: false
+        });
+
+        sectionEnableRow.append(sectionEnableLabel);
+        sectionEnableRow.append(sectionEnableToggle);
+
+        // per-axis min/max section face sliders
+        const sectionSliders: Record<Axis, { min: SliderInput, max: SliderInput }> = {} as any;
+
+        const makeSectionAxisRow = (axis: Axis, labelKey: string) => {
+            const row = new Container({ class: 'view-panel-row' });
+            const label = new Label({ class: 'view-panel-row-label' });
+            i18n.bindText(label, labelKey);
+            const minSlider = new SliderInput({ class: 'view-panel-row-slider', precision: 2, min: -1, max: 1, sliderMin: -1, sliderMax: 1, value: -1 });
+            const maxSlider = new SliderInput({ class: 'view-panel-row-slider', precision: 2, min: -1, max: 1, sliderMin: -1, sliderMax: 1, value: 1 });
+            row.append(label);
+            row.append(minSlider);
+            row.append(maxSlider);
+            sectionSliders[axis] = { min: minSlider, max: maxSlider };
+            return row;
+        };
+
+        const sectionXRow = makeSectionAxisRow('x', 'panel.view-options.cross-section.x');
+        const sectionYRow = makeSectionAxisRow('y', 'panel.view-options.cross-section.y');
+        const sectionZRow = makeSectionAxisRow('z', 'panel.view-options.cross-section.z');
+
         this.append(header);
         this.append(languageRow);
         this.append(clrRow);
@@ -387,6 +430,10 @@ class ViewPanel extends Container {
         this.append(showBoundRow);
         this.append(showBoundDimensionsRow);
         this.append(showCameraPosesRow);
+        this.append(sectionEnableRow);
+        this.append(sectionXRow);
+        this.append(sectionYRow);
+        this.append(sectionZRow);
 
         // handle panel visibility
 
@@ -424,6 +471,57 @@ class ViewPanel extends Container {
         shBandsSlider.on('change', (value: number) => {
             events.fire('view.setBands', value);
         });
+
+        // cross section
+
+        let suppressSection = false;
+
+        const applySectionAxis = (axis: Axis, s: SectionState) => {
+            const { min, max } = sectionSliders[axis];
+            const lo = s.boundMin[axis];
+            const hi = s.boundMax[axis];
+            [min, max].forEach((slider) => {
+                slider.sliderMin = lo;
+                slider.sliderMax = hi;
+                slider.min = lo;
+                slider.max = hi;
+            });
+            min.value = s.min[axis];
+            max.value = s.max[axis];
+        };
+
+        events.on('section.changed', (s: SectionState) => {
+            suppressSection = true;
+            sectionEnableToggle.value = s.enabled;
+            (['x', 'y', 'z'] as Axis[]).forEach(axis => applySectionAxis(axis, s));
+            suppressSection = false;
+        });
+
+        sectionEnableToggle.on('change', (value: boolean) => {
+            if (!suppressSection) {
+                events.fire('section.setEnabled', value);
+            }
+        });
+
+        (['x', 'y', 'z'] as Axis[]).forEach((axis) => {
+            const { min, max } = sectionSliders[axis];
+            min.on('change', (value: number) => {
+                if (!suppressSection) {
+                    events.fire('section.setBound', axis, 'min', value);
+                }
+            });
+            max.on('change', (value: number) => {
+                if (!suppressSection) {
+                    events.fire('section.setBound', axis, 'max', value);
+                }
+            });
+        });
+
+        // initialize from current section state
+        const initialSection = events.invoke('section.state');
+        if (initialSection) {
+            events.fire('section.changed', initialSection);
+        }
 
         // splat size
 

@@ -9,6 +9,11 @@ uniform vec4 lockedClr;
 uniform vec3 clrOffset;
 uniform vec4 clrScale;
 
+// cross-section clip (world-space axis-aligned box, non-destructive)
+uniform int clipEnabled;
+uniform vec3 clipMin;
+uniform vec3 clipMax;
+
 varying mediump vec4 texCoord_flags;            // xy: texCoord, z: selected, w: locked
 varying mediump vec4 color;
 
@@ -67,6 +72,15 @@ void main(void) {
 
     // get center
     vec3 modelCenter = getCenter();
+
+    // cross-section: discard gaussians whose world-space center lies outside the clip box
+    if (clipEnabled == 1) {
+        vec3 clipWorld = (applyPaletteTransform(matrix_model) * vec4(modelCenter, 1.0)).xyz;
+        if (any(lessThan(clipWorld, clipMin)) || any(greaterThan(clipWorld, clipMax))) {
+            gl_Position = discardVec;
+            return;
+        }
+    }
 
     SplatCenter center;
     center.modelCenterOriginal = modelCenter;

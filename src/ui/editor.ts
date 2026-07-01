@@ -24,6 +24,7 @@ import { TimelinePanel } from './timeline-panel';
 import { Tooltips } from './tooltips';
 import { VideoSettingsDialog } from './video-settings-dialog';
 import { ViewCube } from './view-cube';
+import { ViewMenu } from './view-menu';
 import { ViewPanel } from './view-panel';
 import { version } from '../../package.json';
 
@@ -123,6 +124,7 @@ class EditorUI {
         const scenePanel = new ScenePanel(events, tooltips);
         const viewPanel = new ViewPanel(events, tooltips);
         const colorPanel = new ColorPanel(events, tooltips);
+        const viewMenu = new ViewMenu(events, tooltips);
         const bottomToolbar = new BottomToolbar(events, tooltips);
         const rightToolbar = new RightToolbar(events, tooltips);
         const modeToggle = new ModeToggle(events, tooltips);
@@ -135,6 +137,7 @@ class EditorUI {
         canvasContainer.append(scenePanel);
         canvasContainer.append(viewPanel);
         canvasContainer.append(colorPanel);
+        canvasContainer.append(viewMenu);
         canvasContainer.append(bottomToolbar);
         canvasContainer.append(rightToolbar);
         canvasContainer.append(modeToggle);

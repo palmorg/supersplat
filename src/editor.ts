@@ -1,12 +1,15 @@
 import { MemoryFileSystem } from '@playcanvas/splat-transform';
 import { Color, Mat4, path, Texture, Vec3, Vec4 } from 'playcanvas';
 
+import { CameraControlMode } from './camera';
+import { registerCrossSectionEvents } from './cross-section';
 import { EditHistory } from './edit-history';
 import { SelectAllOp, SelectNoneOp, SelectInvertOp, SelectOp, HideSelectionOp, UnhideAllOp, DeleteSelectionOp, ResetOp, MultiOp, AddSplatOp } from './edit-ops';
 import { Element, ElementType } from './element';
 import { Events } from './events';
 import { MappedReadFileSystem } from './io';
 import { Scene } from './scene';
+import { registerSectionGizmos } from './section-gizmo';
 import { Splat } from './splat';
 import { serializePly } from './splat-serialize';
 
@@ -25,6 +28,10 @@ const registerEditorEvents = (events: Events, editHistory: EditHistory, scene: S
     const decodeColorChannel = (value: number) => {
         return Math.min(1, Math.max(0, 0.5 + value * SH_C0));
     };
+
+    // non-destructive cross-section clip box + in-viewport face drag handles
+    registerCrossSectionEvents(events, scene);
+    registerSectionGizmos(events, scene);
 
     // get the list of selected splats (currently limited to just a single one)
     const selectedSplats = () => {
@@ -244,10 +251,31 @@ const registerEditorEvents = (events: Events, editHistory: EditHistory, scene: S
             case 'nx': scene.camera.setAzimElev(270, 0); break;
             case 'ny': scene.camera.setAzimElev(0, 90); break;
             case 'nz': scene.camera.setAzimElev(180, 0); break;
+            // isometric: look down a cube diagonal (elev = -atan(1/sqrt(2)))
+            case 'iso': scene.camera.setAzimElev(45, -35.264); break;
         }
 
         // switch to ortho mode
         scene.camera.ortho = true;
+    });
+
+    // report which standard view (if any) the camera is currently aligned to,
+    // so the view-orientation flyout can highlight the active one
+    events.function('camera.alignedView', () => {
+        if (!scene.camera.ortho) return null;
+        const azim = ((scene.camera.azim % 360) + 360) % 360;
+        const elev = scene.camera.elevation;
+        const near = (a: number, b: number) => Math.abs(a - b) < 0.6;
+        if (near(elev, -90)) return 'top';
+        if (near(elev, 90)) return 'bottom';
+        if (near(elev, 0)) {
+            if (near(azim, 0) || near(azim, 360)) return 'front';
+            if (near(azim, 90)) return 'right';
+            if (near(azim, 180)) return 'back';
+            if (near(azim, 270)) return 'left';
+        }
+        if (near(azim, 45) && near(elev, -35.264)) return 'iso';
+        return null;
     });
 
     // returns true if the selected splat has selected gaussians
@@ -614,9 +642,9 @@ const registerEditorEvents = (events: Events, editHistory: EditHistory, scene: S
 
     // camera control mode (orbit/fly)
 
-    let controlMode: 'orbit' | 'fly' = 'orbit';
+    let controlMode: CameraControlMode = 'orbit';
 
-    const setControlMode = (mode: 'orbit' | 'fly') => {
+    const setControlMode = (mode: CameraControlMode) => {
         if (mode !== controlMode) {
             controlMode = mode;
             scene.camera.controlMode = mode;
@@ -628,12 +656,13 @@ const registerEditorEvents = (events: Events, editHistory: EditHistory, scene: S
         return controlMode;
     });
 
-    events.on('camera.setControlMode', (mode: 'orbit' | 'fly') => {
+    events.on('camera.setControlMode', (mode: CameraControlMode) => {
         setControlMode(mode);
     });
 
     events.on('camera.toggleControlMode', () => {
-        setControlMode(controlMode === 'orbit' ? 'fly' : 'orbit');
+        const order: CameraControlMode[] = ['orbit', 'fly', 'cad'];
+        setControlMode(order[(order.indexOf(controlMode) + 1) % order.length]);
     });
 
     // camera overlay

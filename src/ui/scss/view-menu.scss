@@ -1,0 +1,62 @@
+@use 'colors.scss' as *;
+
+#view-menu {
+    // vertical position (top) is set in JS to align with the toolbar button;
+    // translateY centers the flyout on the button.
+    transform: translateY(-50%);
+    padding: 6px;
+
+    &:not(.pcui-hidden) {
+        display: flex;
+    }
+
+    #view-menu-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 44px);
+        grid-auto-rows: 40px;
+        gap: 4px;
+
+        .view-menu-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+            border-radius: 3px;
+            background-color: $bcg-dark;
+            cursor: pointer;
+
+            svg {
+                color: $clr-default;
+                width: 32px;
+                height: 32px;
+            }
+
+            &:hover {
+                background-color: $bcg-lighter;
+
+                svg {
+                    color: $clr-active;
+                }
+            }
+
+            // the view matching the camera's current orientation
+            &.active {
+                background-color: $bcg-lighter;
+                box-shadow: inset 0 0 0 2px $clr-hilight;
+
+                svg {
+                    color: $clr-active;
+                }
+            }
+        }
+
+        .view-menu-top    { grid-column: 2; grid-row: 1; }
+        .view-menu-left   { grid-column: 1; grid-row: 2; }
+        .view-menu-front  { grid-column: 2; grid-row: 2; }
+        .view-menu-right  { grid-column: 3; grid-row: 2; }
+        .view-menu-back   { grid-column: 4; grid-row: 2; }
+        .view-menu-bottom { grid-column: 2; grid-row: 3; }
+        .view-menu-iso    { grid-column: 2; grid-row: 4; }
+    }
+}

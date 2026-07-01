@@ -95,8 +95,9 @@ class PointerController {
             if (event.pointerType === 'mouse') {
                 // Only release if this is the button that was initially pressed
                 if (event.button === pressedButton) {
-                    // MMB tap (no significant movement) -> focus on cursor point (orbit only; fly uses MMB for zoom)
-                    if (pressedButton === 1 && camera.controlMode === 'orbit' && !mmbDragged) {
+                    // MMB tap (no significant movement) -> focus on cursor point
+                    // (orbit and cad; fly uses MMB for zoom)
+                    if (pressedButton === 1 && (camera.controlMode === 'orbit' || camera.controlMode === 'cad') && !mmbDragged) {
                         camera.pickFocalPoint(event.offsetX / target.clientWidth, event.offsetY / target.clientHeight);
                     }
                     pressedButton = -1;
@@ -149,6 +150,28 @@ class PointerController {
                         } else {
                             pan(x, y, dx, dy);
                         }
+                    }
+                } else if (camera.controlMode === 'cad') {
+                    // CAD mode (SolidWorks-style): the middle button drives all
+                    // navigation while the left button is reserved for selection.
+                    // - middle drag: rotate, Ctrl -> pan, Shift -> zoom
+                    //   (gated on a small drag threshold so a tap can focus on release)
+                    if (pressedButton !== 1) {
+                        return;
+                    }
+                    if (!mmbDragged) {
+                        if (dist(event.offsetX, event.offsetY, mmbStartX, mmbStartY) < CLICK_DRAG_THRESHOLD) {
+                            return;
+                        }
+                        mmbDragged = true;
+                    }
+
+                    if (event.ctrlKey) {
+                        pan(x, y, dx, dy);
+                    } else if (event.shiftKey) {
+                        zoom(dy * -0.02);
+                    } else {
+                        orbit(dx, dy);
                     }
                 } else {
                     // Orbit mode:

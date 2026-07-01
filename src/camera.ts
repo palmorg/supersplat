@@ -49,6 +49,9 @@ const v4 = new Vec4();
 // modulo dealing with negative numbers
 const mod = (n: number, m: number) => ((n % m) + m) % m;
 
+// camera navigation control modes
+type CameraControlMode = 'orbit' | 'fly' | 'cad';
+
 class Camera extends Element {
     /**
      * Calculate the forward vector given azimuth and elevation angles.
@@ -79,7 +82,7 @@ class Camera extends Element {
 
     flySpeed = 1;
 
-    controlMode: 'orbit' | 'fly' = 'orbit';
+    controlMode: CameraControlMode = 'orbit';
 
     // during fly-mode look, stores the camera position that must stay fixed
     // while the azim/elev tween smoothly converges
@@ -806,4 +809,4 @@ class Camera extends Element {
     }
 }
 
-export { Camera };
+export { Camera, CameraControlMode };
